@@ -43,7 +43,7 @@ jobs:
 
       - save_cache:
           name: Save linted files
-          key: npm-v1-lint-{{ checksum "src" }}
+          key: npm-v1-lint-{{ .BuildNum }}
           paths:
             - src
   test-ci:
@@ -57,7 +57,6 @@ jobs:
       - restore_cache:
           keys:
             - npm-v1-dependencies-{{ checksum "yarn.lock" }}
-            - npm-v1-lint-{{ .BuildNum }}
       - run: 
           name: Unit Tests
           command: yarn test
@@ -74,15 +73,12 @@ jobs:
         environment:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: psdb
-
-    
+          POSTGRES_DB: psdb    
     steps:
       - checkout
       - restore_cache:
           keys:
             - npm-v1-dependencies-{{ checksum "yarn.lock" }}
-            - npm-v1-lint-{{ .BuildNum }}
       
       - run:
           name: Run e2e tests
@@ -90,12 +86,46 @@ jobs:
             DATABASE_URL: postgres://postgres:postgres@localhost:5432/psdb
           command: yarn test:e2e
 
+  gendoc:
+    docker:
+      - image: circleci/postgres:9.6-alpine
+        auth:
+          username: anthonyjhoiro
+          password: $DOCKERHUB_PASSWORD  # context / project UI env-var reference
+    
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - npm-v1-dependencies-{{ checksum "yarn.lock" }}
+            - npm-v1-lint-{{ .BuildNum }}
+      - run: 
+          name: Generate doc
+          command: yarn doc:build
+      
+      - store_artifacts:
+          path: docs
+
+    
+
+
         
 
 workflows:
   build-workflow:
     jobs:
       - install
-      - lint
-      - test-ci
-      - test-e2e
+      - lint:
+          requires:
+            - install
+      - test-ci:
+          requires:
+            - install
+      - test-e2e:
+          requires:
+            - install
+      - gendoc:
+          requires:
+            - lint
+
+
