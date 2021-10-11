@@ -3,7 +3,12 @@ jobs:
   build:
     docker:
       - image: cimg/node
+        auth:
+          username: anthonyjhoiro
+          password: $DOCKERHUB_PASSWORD 
+
     steps:
+      - checkout
       - run: 
           name: Install deps using Yarn
           command: yarn install
