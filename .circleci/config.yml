@@ -1,11 +1,14 @@
 version: 2.1
+
+  
 jobs:
-  build:
+  install:
     docker:
       - image: cimg/node:16.10.0
         auth:
           username: anthonyjhoiro
           password: $DOCKERHUB_PASSWORD 
+
 
     steps:
       - checkout
@@ -22,3 +25,7 @@ jobs:
           paths:
             - node_modules
 
+workflows:
+  build-workflow:
+    jobs:
+      - install
