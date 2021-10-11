@@ -1,0 +1,7 @@
+version: 2.1
+jobs:
+  first-job:
+    docker:
+      - image: alpine:latest
+    steps:
+      - run echo Hello World
