@@ -1,9 +1,9 @@
 version: 2.1
 jobs:
-  build:
+  install:
     docker:
-      - image: alpine:latest
+      - image: cimg/node
     steps:
       - run: 
-          name: Hello World
-          command: echo "Hello World"
+          name: Install deps using Yarn
+          command: yarn install
