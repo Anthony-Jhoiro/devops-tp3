@@ -4,4 +4,6 @@ jobs:
     docker:
       - image: alpine:latest
     steps:
-      - run: echo Hello World
+      - run: 
+        name: Hello World
+        command: echo "Hello World"
