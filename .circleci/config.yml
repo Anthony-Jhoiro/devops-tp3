@@ -5,5 +5,5 @@ jobs:
       - image: alpine:latest
     steps:
       - run: 
-        name: Hello World
-        command: echo "Hello World"
+          name: Hello World
+          command: echo "Hello World"
