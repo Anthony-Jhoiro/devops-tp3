@@ -106,10 +106,6 @@ jobs:
       - store_artifacts:
           path: docs
 
-    
-
-
-        
 
 workflows:
   build-workflow:
@@ -127,5 +123,8 @@ workflows:
       - gendoc:
           requires:
             - lint
+            - test-ci
+            - test-e2e
+
 
 
