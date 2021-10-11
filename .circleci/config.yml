@@ -28,6 +28,7 @@ jobs:
           username: anthonyjhoiro
           password: $DOCKERHUB_PASSWORD 
     steps:
+      - checkout
       - restore_cache:
           keys:
             - npm-v1-lint-{{ checksum "src" }}
@@ -51,9 +52,10 @@ jobs:
           username: anthonyjhoiro
           password: $DOCKERHUB_PASSWORD 
     steps:
-    - run: 
-        name: Unit Tests
-        command: yarn test:ci
+      - checkout
+      - run: 
+          name: Unit Tests
+          command: yarn test:ci
 
 workflows:
   build-workflow:
