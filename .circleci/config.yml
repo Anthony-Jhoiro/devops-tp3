@@ -87,7 +87,7 @@ jobs:
       - run:
           name: Run e2e tests
           environment:
-            POSTGRES_URL: postgres://postgres:postgres@localhost:5432/psdb
+            DATABASE_URL: postgres://postgres:postgres@localhost:5432/psdb
           command: yarn test:e2e
 
         
