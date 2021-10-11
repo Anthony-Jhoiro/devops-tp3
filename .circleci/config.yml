@@ -18,7 +18,7 @@ jobs:
 
       - save_cache:
           name: Save Yarn Package Cache
-          key: yarn-packages-{{ checksum "yarn.lock" }}
+          key: npm-v1-dependencies-{{ checksum "yarn.lock" }}
           paths:
             - node_modules
 
