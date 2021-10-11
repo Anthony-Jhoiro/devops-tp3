@@ -1,6 +1,4 @@
-version: 2.1
-
-  
+version: 2.1  
 jobs:
   install:
     docker:
@@ -8,8 +6,6 @@ jobs:
         auth:
           username: anthonyjhoiro
           password: $DOCKERHUB_PASSWORD 
-
-
     steps:
       - checkout
       - restore_cache:
@@ -24,8 +20,43 @@ jobs:
           key: npm-v1-dependencies-{{ checksum "yarn.lock" }}
           paths:
             - node_modules
+  
+  lint:
+    docker:
+      - image: cimg/node:16.10.0
+        auth:
+          username: anthonyjhoiro
+          password: $DOCKERHUB_PASSWORD 
+    steps:
+      - restore_cache:
+          keys:
+            - npm-v1-lint-{{ checksum "yarn.lock" }}
+      - run: 
+          name: Check files format
+          command: yarn format:check
+
+      - run: 
+          name: Lint files
+          command: yarn lint
+
+      - save_cache:
+          name: Save linted files
+          key: npm-v1-lint-{{ checksum "yarn.lock" }}
+          paths:
+            - src
+  test-ci:
+    docker:
+      - image: cimg/node:16.10.0
+        auth:
+          username: anthonyjhoiro
+          password: $DOCKERHUB_PASSWORD 
+    steps:
+    - run: 
+        name: Unit Tests
+        command: yarn test:ci
 
 workflows:
   build-workflow:
     jobs:
       - install
+      - lint
