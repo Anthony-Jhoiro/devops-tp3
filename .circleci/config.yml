@@ -61,6 +61,35 @@ jobs:
       - run: 
           name: Unit Tests
           command: yarn test
+  test-e2e:
+    docker:
+      - image: circleci/postgres:9.6-alpine
+        auth:
+          username: jhoiroerezame
+          password: $DOCKERHUB_PASSWORD  # context / project UI env-var reference
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          DEFAULT_DATABASE: psdb
+      - image: cimg/node:16.10.0
+        auth:
+          username: anthonyjhoiro
+          password: $DOCKERHUB_PASSWORD 
+    
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - npm-v1-dependencies-{{ checksum "yarn.lock" }}
+            - npm-v1-lint-{{ .BuildNum }}
+      
+      - run:
+          name: Run e2e tests
+          environment:
+            POSTGRES_URL: postgres://postgres:postgres@localhost:5432/psdb
+          command: yarn test:e2e
+
+        
 
 workflows:
   build-workflow:
