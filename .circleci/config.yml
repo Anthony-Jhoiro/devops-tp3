@@ -108,6 +108,10 @@ jobs:
   builddocker:
     docker:
       - *docker-config
+
+    environment:
+      DOCKERHUB_LOGIN: *dockerhub_username
+      DOCKERHUB_REPOSITORY: my-awesome-ci-expr
     
     steps:
       - checkout
