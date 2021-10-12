@@ -1,0 +1,165 @@
+version: 2.1  
+jobs:
+  install:
+    docker:
+      - image: cimg/node:16.10.0
+        auth:
+          username: anthonyjhoiro
+          password: $DOCKERHUB_PASSWORD 
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - npm-v1-dependencies-{{ checksum "yarn.lock" }}
+      - run: 
+          name: Install deps using Yarn
+          command: yarn install
+
+      - save_cache:
+          name: Save Yarn Package Cache
+          key: npm-v1-dependencies-{{ checksum "yarn.lock" }}
+          paths:
+            - node_modules
+  
+  lint:
+    docker:
+      - image: cimg/node:16.10.0
+        auth:
+          username: anthonyjhoiro
+          password: $DOCKERHUB_PASSWORD 
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - npm-v1-dependencies-{{ checksum "yarn.lock" }}
+            - npm-v1-lint-{{ .BuildNum }}
+      - run: 
+          name: Check files format
+          command: yarn format:check
+
+      - run: 
+          name: Lint files
+          command: yarn lint
+
+      - save_cache:
+          name: Save linted files
+          key: npm-v1-lint-{{ .BuildNum }}
+          paths:
+            - src
+  test-ci:
+    docker:
+      - image: cimg/node:16.10.0
+        auth:
+          username: anthonyjhoiro
+          password: $DOCKERHUB_PASSWORD 
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - npm-v1-dependencies-{{ checksum "yarn.lock" }}
+      - run: 
+          name: Unit Tests
+          command: yarn test
+  test-e2e:
+    docker:
+      - image: cimg/node:16.10.0
+        auth:
+          username: anthonyjhoiro
+          password: $DOCKERHUB_PASSWORD 
+      - image: circleci/postgres:9.6-alpine
+        auth:
+          username: anthonyjhoiro
+          password: $DOCKERHUB_PASSWORD  # context / project UI env-var reference
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: psdb    
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - npm-v1-dependencies-{{ checksum "yarn.lock" }}
+      
+      - run:
+          name: Run e2e tests
+          environment:
+            DATABASE_URL: postgres://postgres:postgres@localhost:5432/psdb
+          command: yarn test:e2e
+
+  gendoc:
+    docker:
+      - image: cimg/node:16.10.0
+        auth:
+          username: anthonyjhoiro
+          password: $DOCKERHUB_PASSWORD 
+    
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - npm-v1-dependencies-{{ checksum "yarn.lock" }}
+            - npm-v1-lint-{{ .BuildNum }}
+      - run: 
+          name: Generate doc
+          command: yarn doc:build
+      
+      - store_artifacts:
+          path: docs
+  
+  builddocker:
+    docker:
+      - image: cimg/node:16.10.0
+        auth:
+          username: anthonyjhoiro
+          password: $DOCKERHUB_PASSWORD 
+    
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - npm-v1-dependencies-{{ checksum "yarn.lock" }}
+      - setup_remote_docker
+      - run:
+          name: Build and Push docker image
+          command: |
+            TAG=app
+            IMAGE_NAME=anthonyjhoiro/my-awesome-ci-expr
+            IMAGE_NAME_BUILDNUM=$IMAGE_NAME:{{ .BuildNum }}         
+            IMAGE_NAME_LATEST=$IMAGE_NAME:latest
+            docker build -t app .
+            docker tag $APP $IMAGE_NAME_BUILDNUM
+            docker tag $APP $IMAGE_NAME_LATEST
+            echo $DOCKERHUB_PASSWORD | docker login -u anthonyjhoiro --password-stdin
+            docker push $IMAGE_NAME_BUILDNUM
+            docker push $IMAGE_NAME_LATEST
+
+
+
+workflows:
+  build-workflow:
+    jobs:
+      - install
+      - lint:
+          requires:
+            - install
+      - test-ci:
+          requires:
+            - install
+      - test-e2e:
+          requires:
+            - install
+      - gendoc:
+          requires:
+            - lint
+            - test-ci
+            - test-e2e
+      - builddocker:
+          filters:
+            branches:
+              # Run only on main branch
+              only: /^main/ 
+          requires:
+            - lint
+            - test-ci
+            - test-e2e
+
