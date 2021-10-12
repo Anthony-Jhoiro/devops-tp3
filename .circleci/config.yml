@@ -1,3 +1,5 @@
+version: 2.1  
+
 globals:
   credentials:
     dockerhub_username: &dockerhub_username anthonyjhoiro
@@ -40,14 +42,12 @@ commands:
       destination:
         type: string
         default: ""
-    
-    parallelism: << parameters.destination >>
     steps:
       - run: docker tag << parameters.baseimage >> << parameters.destination >>
       - run: docker push << parameters.destination >>
 
 
-version: 2.1  
+
 jobs:
   install:
     docker:
@@ -150,8 +150,10 @@ jobs:
               - main
               - << pipeline.git.branch >>
           steps:
-            - pushdockerhub: $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}
-            - pushdockerhub: $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:latest
+            - pushdockerhub: 
+                destination: $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}
+            - pushdockerhub: 
+                destination: $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:latest
 
       - when:
           condition:
