@@ -124,7 +124,7 @@ jobs:
           command: |
             TAG=app
             IMAGE_NAME=anthonyjhoiro/my-awesome-ci-expr
-            IMAGE_NAME_BUILDNUM=$IMAGE_NAME:{{ .BuildNum }}         
+            IMAGE_NAME_BUILDNUM=$IMAGE_NAME:${CIRCLE_BUILD_NUM}         
             IMAGE_NAME_LATEST=$IMAGE_NAME:latest
             docker build -t app .
             docker tag $APP $IMAGE_NAME_BUILDNUM
