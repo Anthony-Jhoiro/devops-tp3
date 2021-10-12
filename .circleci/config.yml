@@ -47,8 +47,8 @@ commands:
       - run: docker push << parameters.destination >>
 
 
-
 jobs:
+  # Install the node dependencies
   install:
     docker:
       - *docker-config
@@ -64,6 +64,7 @@ jobs:
           paths:
             - node_modules
   
+  # Lint the code
   lint:
     docker:
       - *docker-config
@@ -83,6 +84,8 @@ jobs:
           key: npm-v1-lint-{{ .BuildNum }}
           paths:
             - src
+  
+  # Run CI tests
   test-ci:
     docker:
       - *docker-config 
@@ -91,6 +94,8 @@ jobs:
       - run: 
           name: Unit Tests
           command: yarn test
+  
+  # Run e2e tests
   test-e2e:
     docker:
       - *docker-config
@@ -111,6 +116,7 @@ jobs:
             DATABASE_URL: postgres://postgres:postgres@localhost:5432/psdb
           command: yarn test:e2e
 
+  # Generate the documentation
   gendoc:
     docker:
       - *docker-config
@@ -125,6 +131,7 @@ jobs:
       - store_artifacts:
           path: docs
   
+  # Build and push the docker image
   builddocker:
     docker:
       - *docker-config
@@ -132,7 +139,7 @@ jobs:
     environment:
       DOCKERHUB_LOGIN: *dockerhub_username
       DOCKERHUB_REPOSITORY: my-awesome-ci-expr
-    
+
     steps:
       - init
       - setup_remote_docker # Can not cache docker in images in free tier
@@ -144,6 +151,7 @@ jobs:
           name: Login to docker hub
           command: echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_LOGIN --password-stdin
 
+      # Push build number and latest for main branch
       - when:
           condition:
             equal:
@@ -154,15 +162,18 @@ jobs:
                 destination: $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}
             - pushdockerhub: 
                 destination: $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:latest
-
+      
+      # Push dev images for develop branch
       - when:
           condition:
             equal:
               - << pipeline.git.branch >>
               - develop
           steps:
-            - run: docker tag app $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}-dev
-            - run: docker push $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}-dev
+            - pushdockerhub: 
+                destination: $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}-dev
+
+      # Push prep images for hotfix & release branches
       - when:
           condition:
             or:
@@ -175,8 +186,8 @@ jobs:
                   pattern: /^release\/.*/
               
           steps:
-            - run: docker tag app $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}-prep
-            - run: docker push $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}-prep
+            - pushdockerhub: 
+                destination: $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}-prep
 
 
 workflows:
@@ -200,8 +211,8 @@ workflows:
       - builddocker:
           filters:
             branches:
-              # Run only on main branch
-              only: 
+              # Run only on main, develop, release/.* and hotfix/.* branches
+              only:
                 - main
                 - develop
                 - /^hotfix\/.*/
