@@ -11,17 +11,6 @@ globals:
       auth:
         username: *dockerhub_username
         password: $DOCKERHUB_PASSWORD
-  
-
-  setup: 
-    - &install-cache
-      restore_cache:
-        keys:
-          - npm-v1-dependencies-{{ checksum "yarn.lock" }}
-    - &lint-cache 
-      restore_cache:
-        keys:
-          - npm-v1-lint-{{ .BuildNum }}
 
 
 commands:
@@ -70,7 +59,6 @@ jobs:
       - *docker-config
     steps:
       - init
-      - *lint-cache
       - run: 
           name: Check files format
           command: yarn format:check
@@ -78,12 +66,6 @@ jobs:
       - run: 
           name: Lint files
           command: yarn lint
-
-      - save_cache:
-          name: Save linted files
-          key: npm-v1-lint-{{ .BuildNum }}
-          paths:
-            - src
   
   # Run CI tests
   test-ci:
