@@ -22,14 +22,38 @@ globals:
           - npm-v1-lint-{{ .BuildNum }}
 
 
+commands:
+  init:
+    description: Setup the environment
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - npm-v1-dependencies-{{ checksum "yarn.lock" }}
+  
+  pushdockerhub:
+    description: Push tag image to Docker Hub
+    parameters:
+      baseimage:
+        type: string
+        default: app
+      destination:
+        type: string
+        default: ""
+    
+    parallelism: << parameters.destination >>
+    steps:
+      - run: docker tag << parameters.baseimage >> << parameters.destination >>
+      - run: docker push << parameters.destination >>
+
+
 version: 2.1  
 jobs:
   install:
     docker:
       - *docker-config
     steps:
-      - checkout
-      - *install-cache
+      - init
       - run: 
           name: Install deps using Yarn
           command: yarn install
@@ -44,8 +68,7 @@ jobs:
     docker:
       - *docker-config
     steps:
-      - checkout
-      - *install-cache
+      - init
       - *lint-cache
       - run: 
           name: Check files format
@@ -64,8 +87,7 @@ jobs:
     docker:
       - *docker-config 
     steps:
-      - checkout
-      - *install-cache
+      - init
       - run: 
           name: Unit Tests
           command: yarn test
@@ -81,8 +103,7 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: psdb    
     steps:
-      - checkout
-      - *install-cache
+      - init
       
       - run:
           name: Run e2e tests
@@ -95,8 +116,7 @@ jobs:
       - *docker-config
     
     steps:
-      - checkout
-      - *install-cache
+      - init
       - *lint-cache
       - run: 
           name: Generate doc
@@ -114,8 +134,7 @@ jobs:
       DOCKERHUB_REPOSITORY: my-awesome-ci-expr
     
     steps:
-      - checkout
-      - *install-cache
+      - init
       - setup_remote_docker # Can not cache docker in images in free tier
       - run:
           name: Build and Push docker image
@@ -131,13 +150,8 @@ jobs:
               - main
               - << pipeline.git.branch >>
           steps:
-            - run: 
-                name: Push Latest and Build number
-                command: |
-                  docker tag app $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}
-                  docker tag app $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:latest
-                  docker push $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}
-                  docker push $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:latest
+            - pushdockerhub: $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}
+            - pushdockerhub: $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:latest
 
       - when:
           condition:
