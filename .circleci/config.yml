@@ -105,7 +105,6 @@ jobs:
     
     steps:
       - init
-      - *lint-cache
       - run: 
           name: Generate doc
           command: yarn doc:build
