@@ -1,11 +1,15 @@
+docker-config: 
+  - &docker-config
+    image: cimg/node:16.10.0
+    auth:
+      username: anthonyjhoiro
+      password: $DOCKERHUB_PASSWORD
+
 version: 2.1  
 jobs:
   install:
     docker:
-      - image: cimg/node:16.10.0
-        auth:
-          username: anthonyjhoiro
-          password: $DOCKERHUB_PASSWORD 
+      - *docker-config
     steps:
       - checkout
       - restore_cache:
@@ -23,10 +27,7 @@ jobs:
   
   lint:
     docker:
-      - image: cimg/node:16.10.0
-        auth:
-          username: anthonyjhoiro
-          password: $DOCKERHUB_PASSWORD 
+      - *docker-config
     steps:
       - checkout
       - restore_cache:
@@ -48,10 +49,7 @@ jobs:
             - src
   test-ci:
     docker:
-      - image: cimg/node:16.10.0
-        auth:
-          username: anthonyjhoiro
-          password: $DOCKERHUB_PASSWORD 
+      - *docker-config 
     steps:
       - checkout
       - restore_cache:
@@ -62,10 +60,7 @@ jobs:
           command: yarn test
   test-e2e:
     docker:
-      - image: cimg/node:16.10.0
-        auth:
-          username: anthonyjhoiro
-          password: $DOCKERHUB_PASSWORD 
+      - *docker-config
       - image: circleci/postgres:9.6-alpine
         auth:
           username: anthonyjhoiro
@@ -88,10 +83,7 @@ jobs:
 
   gendoc:
     docker:
-      - image: cimg/node:16.10.0
-        auth:
-          username: anthonyjhoiro
-          password: $DOCKERHUB_PASSWORD 
+      - *docker-config
     
     steps:
       - checkout
@@ -108,10 +100,7 @@ jobs:
   
   builddocker:
     docker:
-      - image: cimg/node:16.10.0
-        auth:
-          username: anthonyjhoiro
-          password: $DOCKERHUB_PASSWORD 
+      - *docker-config
     
     steps:
       - checkout
@@ -124,8 +113,12 @@ jobs:
           command: |
             TAG=app
             IMAGE_NAME=anthonyjhoiro/my-awesome-ci-expr
-            IMAGE_NAME_BUILDNUM=$IMAGE_NAME:${CIRCLE_BUILD_NUM}         
+            IMAGE_NAME_BUILDNUM=$IMAGE_NAME:${CIRCLE_BUILD_NUM}
             IMAGE_NAME_LATEST=$IMAGE_NAME:latest
+            echo $APP
+            echo $IMAGE_NAME
+            echo $IMAGE_NAME_BUILDNUM
+            echo $IMAGE_NAME_LATEST
             docker build -t app .
             docker tag $APP $IMAGE_NAME_BUILDNUM
             docker tag $APP $IMAGE_NAME_LATEST
