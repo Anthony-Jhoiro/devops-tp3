@@ -1,16 +1,25 @@
 globals:
+  credentials:
+    dockerhub_username: &dockerhub_username anthonyjhoiro
+
+
   docker-config: 
     - &docker-config
       image: cimg/node:16.10.0
       auth:
-        username: anthonyjhoiro
+        username: *dockerhub_username
         password: $DOCKERHUB_PASSWORD
   
+
   setup: 
     - &install-cache
       restore_cache:
         keys:
           - npm-v1-dependencies-{{ checksum "yarn.lock" }}
+    - &lint-cache 
+      restore_cache:
+        keys:
+          - npm-v1-lint-{{ .BuildNum }}
 
 
 version: 2.1  
@@ -37,9 +46,7 @@ jobs:
     steps:
       - checkout
       - *install-cache
-      - restore_cache:
-          keys:
-            - npm-v1-lint-{{ .BuildNum }}
+      - *lint-cache
       - run: 
           name: Check files format
           command: yarn format:check
@@ -67,8 +74,8 @@ jobs:
       - *docker-config
       - image: circleci/postgres:9.6-alpine
         auth:
-          username: anthonyjhoiro
-          password: $DOCKERHUB_PASSWORD  # context / project UI env-var reference
+          username: *dockerhub_username
+          password: $DOCKERHUB_PASSWORD
         environment:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -90,9 +97,7 @@ jobs:
     steps:
       - checkout
       - *install-cache
-      - restore_cache:
-          keys:
-            - npm-v1-lint-{{ .BuildNum }}
+      - *lint-cache
       - run: 
           name: Generate doc
           command: yarn doc:build
@@ -107,14 +112,69 @@ jobs:
     steps:
       - checkout
       - *install-cache
-      - setup_remote_docker
+      - setup_remote_docker:
+          docker_layer_caching: true
       - run:
           name: Build and Push docker image
-          command: |
-            .circleci/build-docker.sh
-          environment:
-            DOCKERHUB_LOGIN: anthonyjhoiro
-            DOCKERHUB_REPOSITORY: my-awesome-ci-expr
+          command: docker build -t .
+  
+  pushdockerhub:
+    docker:
+      - *docker-config
+    
+    environment:
+      DOCKERHUB_LOGIN: *dockerhub_username
+      DOCKERHUB_REPOSITORY: my-awesome-ci-expr
+    
+    steps:
+      - checkout
+      - *install-cache
+      - setup_remote_docker:
+          docker_layer_caching: true
+
+      - run: echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_LOGIN --password-stdin
+
+      - when:
+          condition:
+            equal:
+              - main
+              - << pipeline.git.branch >>
+          steps:
+            - run: 
+                name: Push Latest and Build number
+                command: |
+                  docker tag app $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}
+                  docker tag app $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:latest
+                  docker push $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}
+                  docker push $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:latest
+
+      - when:
+          condition:
+            equal:
+              - << pipeline.git.branch >>
+              - develop
+          steps:
+            - run: docker tag app $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}-dev
+            - run: docker push $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}-dev
+      - when:
+          condition:
+            or:
+              - matches:
+                  value: << pipeline.git.branch >>
+                  pattern: /^hotfix\/.*/
+              
+              - matches:
+                  value: << pipeline.git.branch >>
+                  pattern: /^release\/.*/
+              
+          steps:
+            - run: docker tag app $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}-prep
+            - run: docker push $DOCKERHUB_LOGIN/$DOCKERHUB_REPOSITORY:${CIRCLE_BUILD_NUM}-prep
+
+      - run:
+          name: Build and Push docker image
+          command: docker build -t .
+          
 
 
 
@@ -140,9 +200,18 @@ workflows:
           filters:
             branches:
               # Run only on main branch
-              only: /^main/ 
+              only: 
+                - main
+                - develop
+                - /^hotfix\/.*/
+                - /^release\/.*/
           requires:
             - lint
             - test-ci
             - test-e2e
+
+      - pushdockerhub:
+          requires:
+            - builddocker
+            
 
