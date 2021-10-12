@@ -1,9 +1,17 @@
-docker-config: 
-  - &docker-config
-    image: cimg/node:16.10.0
-    auth:
-      username: anthonyjhoiro
-      password: $DOCKERHUB_PASSWORD
+globals:
+  docker-config: 
+    - &docker-config
+      image: cimg/node:16.10.0
+      auth:
+        username: anthonyjhoiro
+        password: $DOCKERHUB_PASSWORD
+  
+  setup: &setup
+    - checkout
+    - restore_cache:
+        keys:
+          - npm-v1-dependencies-{{ checksum "yarn.lock" }}
+
 
 version: 2.1  
 jobs:
@@ -11,10 +19,7 @@ jobs:
     docker:
       - *docker-config
     steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - npm-v1-dependencies-{{ checksum "yarn.lock" }}
+      <<: *setup
       - run: 
           name: Install deps using Yarn
           command: yarn install
@@ -29,10 +34,9 @@ jobs:
     docker:
       - *docker-config
     steps:
-      - checkout
+      <<: *setup
       - restore_cache:
           keys:
-            - npm-v1-dependencies-{{ checksum "yarn.lock" }}
             - npm-v1-lint-{{ .BuildNum }}
       - run: 
           name: Check files format
@@ -51,10 +55,7 @@ jobs:
     docker:
       - *docker-config 
     steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - npm-v1-dependencies-{{ checksum "yarn.lock" }}
+      <<: *setup
       - run: 
           name: Unit Tests
           command: yarn test
@@ -70,10 +71,7 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: psdb    
     steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - npm-v1-dependencies-{{ checksum "yarn.lock" }}
+      <<: *setup
       
       - run:
           name: Run e2e tests
@@ -86,10 +84,9 @@ jobs:
       - *docker-config
     
     steps:
-      - checkout
+      <<: *setup
       - restore_cache:
           keys:
-            - npm-v1-dependencies-{{ checksum "yarn.lock" }}
             - npm-v1-lint-{{ .BuildNum }}
       - run: 
           name: Generate doc
@@ -103,10 +100,7 @@ jobs:
       - *docker-config
     
     steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - npm-v1-dependencies-{{ checksum "yarn.lock" }}
+      <<: *setup
       - setup_remote_docker
       - run:
           name: Build and Push docker image
@@ -115,14 +109,13 @@ jobs:
             IMAGE_NAME=anthonyjhoiro/my-awesome-ci-expr
             IMAGE_NAME_BUILDNUM=$IMAGE_NAME:${CIRCLE_BUILD_NUM}
             IMAGE_NAME_LATEST=$IMAGE_NAME:latest
-            echo $APP
-            echo $IMAGE_NAME
-            echo $IMAGE_NAME_BUILDNUM
-            echo $IMAGE_NAME_LATEST
-            docker build -t app .
-            docker tag $APP $IMAGE_NAME_BUILDNUM
-            docker tag $APP $IMAGE_NAME_LATEST
+
+            docker build -t $TAG .
+            docker tag $TAG $IMAGE_NAME_BUILDNUM
+            docker tag $TAG $IMAGE_NAME_LATEST
+
             echo $DOCKERHUB_PASSWORD | docker login -u anthonyjhoiro --password-stdin
+
             docker push $IMAGE_NAME_BUILDNUM
             docker push $IMAGE_NAME_LATEST
 
