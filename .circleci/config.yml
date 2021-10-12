@@ -111,19 +111,10 @@ jobs:
       - run:
           name: Build and Push docker image
           command: |
-            TAG=app
-            IMAGE_NAME=anthonyjhoiro/my-awesome-ci-expr
-            IMAGE_NAME_BUILDNUM=$IMAGE_NAME:${CIRCLE_BUILD_NUM}
-            IMAGE_NAME_LATEST=$IMAGE_NAME:latest
-
-            docker build -t $TAG .
-            docker tag $TAG $IMAGE_NAME_BUILDNUM
-            docker tag $TAG $IMAGE_NAME_LATEST
-
-            echo $DOCKERHUB_PASSWORD | docker login -u anthonyjhoiro --password-stdin
-
-            docker push $IMAGE_NAME_BUILDNUM
-            docker push $IMAGE_NAME_LATEST
+            .circleci/build-docker.sh
+          environment:
+            DOCKERHUB_LOGIN: anthonyjhoiro
+            DOCKERHUB_REPOSITORY: my-awesome-ci-expr
 
 
 
