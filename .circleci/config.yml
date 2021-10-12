@@ -6,9 +6,9 @@ globals:
         username: anthonyjhoiro
         password: $DOCKERHUB_PASSWORD
   
-  setup: &setup
-    - checkout
-    - restore_cache:
+  setup: 
+    - &install-cache
+      restore_cache:
         keys:
           - npm-v1-dependencies-{{ checksum "yarn.lock" }}
 
@@ -19,7 +19,8 @@ jobs:
     docker:
       - *docker-config
     steps:
-      <<: *setup
+      - checkout
+      - *install-cache
       - run: 
           name: Install deps using Yarn
           command: yarn install
@@ -34,7 +35,8 @@ jobs:
     docker:
       - *docker-config
     steps:
-      <<: *setup
+      - checkout
+      - *install-cache
       - restore_cache:
           keys:
             - npm-v1-lint-{{ .BuildNum }}
@@ -55,7 +57,8 @@ jobs:
     docker:
       - *docker-config 
     steps:
-      <<: *setup
+      - checkout
+      - *install-cache
       - run: 
           name: Unit Tests
           command: yarn test
@@ -71,7 +74,8 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: psdb    
     steps:
-      <<: *setup
+      - checkout
+      - *install-cache
       
       - run:
           name: Run e2e tests
@@ -84,7 +88,8 @@ jobs:
       - *docker-config
     
     steps:
-      <<: *setup
+      - checkout
+      - *install-cache
       - restore_cache:
           keys:
             - npm-v1-lint-{{ .BuildNum }}
@@ -100,7 +105,8 @@ jobs:
       - *docker-config
     
     steps:
-      <<: *setup
+      - checkout
+      - *install-cache
       - setup_remote_docker
       - run:
           name: Build and Push docker image
