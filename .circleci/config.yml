@@ -105,6 +105,34 @@ jobs:
       
       - store_artifacts:
           path: docs
+  
+  builddocker:
+    docker:
+      - image: cimg/node:16.10.0
+        auth:
+          username: anthonyjhoiro
+          password: $DOCKERHUB_PASSWORD 
+    
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - npm-v1-dependencies-{{ checksum "yarn.lock" }}
+      - setup_remote_docker
+      - run:
+          name: Build and Push docker image
+          command: |
+            TAG=app
+            IMAGE_NAME=anthonyjhoiro/my-awesome-ci-expr
+            IMAGE_NAME_BUILDNUM=$IMAGE_NAME:{{ .BuildNum }}         
+            IMAGE_NAME_LATEST=$IMAGE_NAME:latest
+            docker build -t app .
+            docker tag $APP $IMAGE_NAME_BUILDNUM
+            docker tag $APP $IMAGE_NAME_LATEST
+            echo $DOCKERHUB_PASSWORD | docker login -u anthonyjhoiro --password-stdin
+            docker push $IMAGE_NAME_BUILDNUM
+            docker push $IMAGE_NAME_LATEST
+
 
 
 workflows:
@@ -125,3 +153,13 @@ workflows:
             - lint
             - test-ci
             - test-e2e
+      - builddocker:
+          filters:
+            branches:
+              # Run only on main branch
+              only: /^main/ 
+          requires:
+            - lint
+            - test-ci
+            - test-e2e
+
