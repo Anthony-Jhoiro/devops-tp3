@@ -115,7 +115,7 @@ jobs:
       - setup_remote_docker # Can not cache docker in images in free tier
       - run:
           name: Build and Push docker image
-          command: docker build -t .
+          command: docker build -t app .
     
       - run: 
           name: Login to docker hub
